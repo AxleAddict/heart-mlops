@@ -21,6 +21,7 @@ USER appuser
 
 ENV HEART_MODEL_PATH=/app/models/model.pkl
 ENV LOG_LEVEL=INFO
+ENV PYTHONPATH=/app/src
 
 EXPOSE 8000
 
