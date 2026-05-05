@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heart-api-green
+  namespace: prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: heart-api
+      slot: green
+  template:
+    metadata:
+      labels:
+        app: heart-api
+        slot: green
+    spec:
+      containers:
+        - name: heart-api
+          image: asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: HEART_MODEL_PATH
+              value: /app/models/model.pkl
+            - name: LOG_LEVEL
+              value: INFO
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi

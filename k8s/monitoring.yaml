@@ -1,0 +1,33 @@
+# ServiceMonitor for nonprod — Prometheus scrapes /metrics every 15s
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: heart-api-monitor
+  namespace: nonprod
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: heart-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+# ServiceMonitor for prod
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: heart-api-monitor
+  namespace: prod
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: heart-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
