@@ -22,13 +22,12 @@ pipeline {
       steps {
         sh '''
           python3 -m venv .venv
-          . .venv/bin/activate
-          pip install -q -r requirements.txt
+          .venv/bin/pip install -q -r requirements.txt
 
           MLFLOW_TRACKING_URI=$MLFLOW_URI \
           MLFLOW_EXPERIMENT_NAME=heart-disease-ci \
           PYTHONPATH=src \
-          python3 -m heart.train \
+          .venv/bin/python3 -m heart.train \
             --data  data/processed.cleveland.data \
             --val-data data/processed.hungarian.data \
             --artifacts-dir artifacts \
@@ -45,9 +44,7 @@ pipeline {
     stage('Unit Tests') {
       steps {
         sh '''
-          . .venv/bin/activate
-          . .venv/bin/activate
-          PYTHONPATH=src pytest tests/ -v --tb=short
+          PYTHONPATH=src .venv/bin/pytest tests/ -v --tb=short
         '''
       }
     }
