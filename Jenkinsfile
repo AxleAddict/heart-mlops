@@ -85,8 +85,8 @@ pipeline {
 
     stage('Deploy to Prod (Blue/Green)') {
       when { branch 'main' }
-      input { message "Promote to Production?" ok "Deploy" }
       steps {
+        input message: "Promote to Production?", ok: "Deploy"
         sh '''
           gcloud container clusters get-credentials $CLUSTER \
             --zone $CLUSTER_ZONE --project $PROJECT
