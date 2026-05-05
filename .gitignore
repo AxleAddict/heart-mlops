@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.pkl
+.venv/
+venv/
+mlruns/
+artifacts/
+models/
+*.egg-info/
+.DS_Store
+.github/

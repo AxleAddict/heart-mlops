@@ -1,0 +1,21 @@
+{
+  "na_per_column_before": {
+    "ca": 4,
+    "thal": 2
+  },
+  "fill_values": {
+    "age": 56.0,
+    "trestbps": 130.0,
+    "chol": 241.0,
+    "thalach": 153.0,
+    "oldpeak": 0.8,
+    "ca": 0.0,
+    "sex": 1.0,
+    "cp": 4.0,
+    "fbs": 0.0,
+    "restecg": 0.0,
+    "exang": 0.0,
+    "slope": 1.0,
+    "thal": 3.0
+  }
+}
