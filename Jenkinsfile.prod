@@ -1,0 +1,92 @@
+pipeline {
+  agent any
+
+  parameters {
+    string(
+      name: 'IMAGE_TAG',
+      defaultValue: 'latest',
+      description: 'Docker image tag to deploy to prod (use the git SHA from a successful CI build)'
+    )
+    choice(
+      name: 'SLOT',
+      choices: ['green', 'blue'],
+      description: 'Which slot to deploy into (the other slot stays live until cutover)'
+    )
+  }
+
+  environment {
+    PROJECT      = "heart-mlops-2026"
+    REGION       = "asia-south1"
+    REGISTRY     = "${REGION}-docker.pkg.dev/${PROJECT}/heart-app"
+    IMAGE        = "${REGISTRY}/heart-api"
+    CLUSTER      = "heart-cluster"
+    CLUSTER_ZONE = "${REGION}-a"
+    GCP_KEY      = credentials('gcp-service-account-key')
+  }
+
+  stages {
+
+    stage('Confirm') {
+      steps {
+        echo "Deploying ${IMAGE}:${params.IMAGE_TAG} to prod slot=${params.SLOT}"
+      }
+    }
+
+    stage('Deploy to Prod Slot') {
+      steps {
+        sh '''
+          gcloud auth activate-service-account --key-file=$GCP_KEY
+          gcloud container clusters get-credentials $CLUSTER \
+            --zone $CLUSTER_ZONE --project $PROJECT
+
+          kubectl set image deployment/heart-api-${SLOT} \
+            heart-api=${IMAGE}:${IMAGE_TAG} -n prod
+
+          kubectl rollout status deployment/heart-api-${SLOT} \
+            -n prod --timeout=180s
+        '''
+      }
+    }
+
+    stage('Smoke Test') {
+      steps {
+        sh '''
+          gcloud auth activate-service-account --key-file=$GCP_KEY
+          gcloud container clusters get-credentials $CLUSTER \
+            --zone $CLUSTER_ZONE --project $PROJECT
+
+          # Get the slot pod IP and test /health directly
+          POD=$(kubectl get pod -n prod -l slot=${SLOT} -o jsonpath="{.items[0].metadata.name}")
+          kubectl exec -n prod $POD -- curl -sf http://localhost:8000/health
+          echo "Smoke test passed"
+        '''
+      }
+    }
+
+    stage('Cutover Traffic') {
+      steps {
+        input message: "Cut prod traffic to ${params.SLOT}?", ok: "Cutover"
+        sh '''
+          gcloud auth activate-service-account --key-file=$GCP_KEY
+          gcloud container clusters get-credentials $CLUSTER \
+            --zone $CLUSTER_ZONE --project $PROJECT
+
+          kubectl patch service heart-api-svc -n prod \
+            --type=json \
+            -p="[{\\"op\\":\\"replace\\",\\"path\\":\\"/spec/selector/slot\\",\\"value\\":\\"${SLOT}\\"}]"
+
+          echo "Traffic cut to slot=${SLOT} image=${IMAGE}:${IMAGE_TAG}"
+        '''
+      }
+    }
+  }
+
+  post {
+    failure {
+      echo "Prod deploy failed — traffic unchanged, rollback by re-running with previous tag"
+    }
+    success {
+      echo "Prod deploy complete — slot=${params.SLOT} image=${env.IMAGE}:${params.IMAGE_TAG}"
+    }
+  }
+}

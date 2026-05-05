@@ -21,13 +21,13 @@ pipeline {
     stage('Train') {
       steps {
         sh '''
-          python3 -m venv .venv
-          .venv/bin/pip install -q -r requirements.txt
+          python3 -m venv $WORKSPACE/.venv
+          $WORKSPACE/.venv/bin/pip install -q -r requirements.txt
 
           MLFLOW_TRACKING_URI=$MLFLOW_URI \
           MLFLOW_EXPERIMENT_NAME=heart-disease-ci \
-          PYTHONPATH=src \
-          .venv/bin/python3 -m heart.train \
+          PYTHONPATH=$WORKSPACE/src \
+          $WORKSPACE/.venv/bin/python3 -m heart.train \
             --data  data/processed.cleveland.data \
             --val-data data/processed.hungarian.data \
             --artifacts-dir artifacts \
@@ -44,7 +44,7 @@ pipeline {
     stage('Unit Tests') {
       steps {
         sh '''
-          PYTHONPATH=src .venv/bin/pytest tests/ -v --tb=short
+          PYTHONPATH=$WORKSPACE/src $WORKSPACE/.venv/bin/pytest tests/ -v --tb=short
         '''
       }
     }
@@ -70,6 +70,7 @@ pipeline {
     stage('Deploy to Non-Prod') {
       steps {
         sh '''
+          gcloud auth activate-service-account --key-file=$GCP_KEY
           gcloud container clusters get-credentials $CLUSTER \
             --zone $CLUSTER_ZONE --project $PROJECT
 
@@ -78,29 +79,6 @@ pipeline {
 
           kubectl rollout status deployment/heart-api \
             -n nonprod --timeout=120s
-        '''
-      }
-    }
-
-    stage('Deploy to Prod (Blue/Green)') {
-      when { branch 'main' }
-      steps {
-        input message: "Promote to Production?", ok: "Deploy"
-        sh '''
-          gcloud container clusters get-credentials $CLUSTER \
-            --zone $CLUSTER_ZONE --project $PROJECT
-
-          # Deploy new image to green slot
-          kubectl set image deployment/heart-api-green \
-            heart-api=${IMAGE}:${GIT_COMMIT} -n prod
-
-          kubectl rollout status deployment/heart-api-green \
-            -n prod --timeout=180s
-
-          # Cut traffic to green
-          kubectl patch service heart-api-svc -n prod \
-            --type=json \
-            -p="[{\"op\":\"replace\",\"path\":\"/spec/selector/slot\",\"value\":\"green\"}]"
         '''
       }
     }
