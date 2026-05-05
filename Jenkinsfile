@@ -27,6 +27,7 @@ pipeline {
 
           MLFLOW_TRACKING_URI=$MLFLOW_URI \
           MLFLOW_EXPERIMENT_NAME=heart-disease-ci \
+          PYTHONPATH=src \
           python3 -m heart.train \
             --data  data/processed.cleveland.data \
             --val-data data/processed.hungarian.data \
@@ -45,7 +46,7 @@ pipeline {
       steps {
         sh '''
           . .venv/bin/activate
-          pytest tests/ -v --tb=short
+          PYTHONPATH=src pytest tests/ -v --tb=short
         '''
       }
     }
