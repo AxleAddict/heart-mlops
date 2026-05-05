@@ -56,7 +56,8 @@ pipeline {
             --zone \$CLUSTER_ZONE --project \$PROJECT
 
           POD=\$(kubectl get pod -n prod -l slot=${params.SLOT} -o jsonpath="{.items[0].metadata.name}")
-          kubectl exec -n prod \$POD -- curl -sf http://localhost:8000/health
+          kubectl exec -n prod \$POD -- python3 -c \
+            "import urllib.request; r=urllib.request.urlopen('http://localhost:8000/health'); print(r.read())"
           echo "Smoke test passed"
         """
       }
