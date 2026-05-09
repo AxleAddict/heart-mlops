@@ -25,6 +25,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -120,6 +121,12 @@ async def lifespan(app: FastAPI):
         # has not been built yet; /predict will return 503.
         log.error("Model not loaded at startup: %s", exc)
         app.state.model = None
+
+    # Pre-initialise error labels so the metric appears in Prometheus at 0
+    # even before the first error occurs.
+    for label in ("value_error", "validation_error", "runtime_error"):
+        PREDICTION_ERRORS.labels(error_type=label)
+
     yield
 
 
@@ -229,6 +236,15 @@ def predict_batch(
         predictions=[PredictionResponse(**r.to_dict()) for r in results],
         count=len(results),
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(request: Request, exc: RequestValidationError):
+    """Count Pydantic/FastAPI 422 validation errors in our error metric."""
+    if request.url.path.startswith("/predict"):
+        PREDICTION_ERRORS.labels(error_type="validation_error").inc()
+        log.warning("Validation error on %s: %s", request.url.path, exc)
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 @app.exception_handler(Exception)
