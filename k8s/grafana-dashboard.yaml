@@ -8,17 +8,17 @@ metadata:
 data:
   heart-dashboard.json: |
     {
-      "title": "Heart Disease Classifier",
+      "title": "Heart Disease Classifier — MLOps Dashboard",
       "uid": "heart-mlops",
       "schemaVersion": 38,
-      "version": 2,
+      "version": 3,
       "refresh": "15s",
       "time": { "from": "now-1h", "to": "now" },
       "templating": {
         "list": [
           {
             "name": "namespace",
-            "label": "Namespace",
+            "label": "Environment",
             "type": "query",
             "datasource": { "type": "prometheus" },
             "query": "label_values(heart_predictions_total, namespace)",
@@ -31,93 +31,342 @@ data:
         ]
       },
       "panels": [
+
+        {
+          "id": 10,
+          "title": "Total Predictions Served",
+          "type": "stat",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "thresholds" },
+              "thresholds": { "steps": [{ "color": "blue", "value": null }] }
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["sum"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto" },
+          "targets": [{
+            "datasource": { "type": "prometheus" },
+            "expr": "sum(heart_predictions_total{namespace=~\"$namespace\"})",
+            "legendFormat": "Total"
+          }]
+        },
+
+        {
+          "id": 11,
+          "title": "Disease Detection Rate",
+          "type": "gauge",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0, "max": 1,
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.45 },
+                  { "color": "red", "value": 0.65 }
+                ]
+              }
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [{
+            "datasource": { "type": "prometheus" },
+            "expr": "sum(heart_predictions_total{namespace=~\"$namespace\", prediction=\"1\"}) / sum(heart_predictions_total{namespace=~\"$namespace\"})",
+            "legendFormat": "Disease Rate"
+          }]
+        },
+
+        {
+          "id": 12,
+          "title": "Median Inference Latency",
+          "type": "stat",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 100 },
+                  { "color": "red", "value": 500 }
+                ]
+              }
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "targets": [{
+            "datasource": { "type": "prometheus" },
+            "expr": "histogram_quantile(0.50, rate(heart_prediction_latency_seconds_bucket{namespace=~\"$namespace\"}[5m])) * 1000",
+            "legendFormat": "p50 Inference"
+          }]
+        },
+
+        {
+          "id": 13,
+          "title": "Prediction Error Rate",
+          "type": "stat",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 3,
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.01 },
+                  { "color": "red", "value": 0.1 }
+                ]
+              }
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
+          "targets": [{
+            "datasource": { "type": "prometheus" },
+            "expr": "sum(rate(heart_prediction_errors_total{namespace=~\"$namespace\"}[5m]))",
+            "legendFormat": "Errors/s"
+          }]
+        },
+
         {
           "id": 1,
-          "title": "Prediction Rate (req/s)",
+          "title": "Prediction Throughput by Class",
+          "description": "How many disease vs no-disease predictions are being served per second",
           "type": "timeseries",
-          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
-          "targets": [{
-            "datasource": { "type": "prometheus" },
-            "expr": "rate(heart_predictions_total{namespace=~\"$namespace\"}[1m])",
-            "legendFormat": "{{namespace}} class={{prediction}}"
-          }]
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 15 } }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace) (rate(heart_predictions_total{namespace=~\"$namespace\", prediction=\"1\"}[1m]))",
+              "legendFormat": "🔴 Disease Positive  ({{ namespace }})"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace) (rate(heart_predictions_total{namespace=~\"$namespace\", prediction=\"0\"}[1m]))",
+              "legendFormat": "🟢 No Disease ({{ namespace }})"
+            }
+          ]
         },
+
         {
           "id": 2,
-          "title": "Predictions by Class",
+          "title": "Predictions by Class — Total Share",
+          "description": "Overall proportion of disease vs no-disease predictions",
           "type": "piechart",
-          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-          "targets": [{
-            "datasource": { "type": "prometheus" },
-            "expr": "heart_predictions_total{namespace=~\"$namespace\"}",
-            "legendFormat": "{{namespace}} class={{prediction}}"
-          }]
+          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+          "options": {
+            "pieType": "donut",
+            "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum(heart_predictions_total{namespace=~\"$namespace\", prediction=\"1\"})",
+              "legendFormat": "Disease Detected"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum(heart_predictions_total{namespace=~\"$namespace\", prediction=\"0\"})",
+              "legendFormat": "No Disease"
+            }
+          ]
         },
+
         {
           "id": 3,
-          "title": "API Request Rate (req/s)",
+          "title": "HTTP Request Throughput",
+          "description": "Total API requests per second by HTTP method and status code",
           "type": "timeseries",
-          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
-          "targets": [{
-            "datasource": { "type": "prometheus" },
-            "expr": "rate(http_requests_total{job=~\".*heart.*\", namespace=~\"$namespace\"}[1m])",
-            "legendFormat": "{{namespace}} {{method}} {{status}}"
-          }]
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace, method, status) (rate(http_requests_total{job=~\".*heart.*\", namespace=~\"$namespace\", status=~\"2..\"}[1m]))",
+              "legendFormat": "✅ {{ namespace }} — {{ method }} {{ status }} (Success)"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace, method, status) (rate(http_requests_total{job=~\".*heart.*\", namespace=~\"$namespace\", status=~\"[45]..\"}[1m]))",
+              "legendFormat": "❌ {{ namespace }} — {{ method }} {{ status }} (Error)"
+            }
+          ]
         },
+
         {
           "id": 4,
-          "title": "p95 API Latency (s)",
+          "title": "API Response Latency Percentiles",
+          "description": "p50 = typical user experience, p95 = tail latency, p99 = worst case",
           "type": "timeseries",
-          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
-          "targets": [{
-            "datasource": { "type": "prometheus" },
-            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~\".*heart.*\", namespace=~\"$namespace\"}[5m]))",
-            "legendFormat": "{{namespace}} p95"
-          }]
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": { "unit": "ms", "custom": { "lineWidth": 2 } }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.50, sum by (le, namespace) (rate(http_request_duration_seconds_bucket{job=~\".*heart.*\", namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p50 — Median ({{ namespace }})"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.95, sum by (le, namespace) (rate(http_request_duration_seconds_bucket{job=~\".*heart.*\", namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p95 — 95th Percentile ({{ namespace }})"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.99, sum by (le, namespace) (rate(http_request_duration_seconds_bucket{job=~\".*heart.*\", namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p99 — Worst Case ({{ namespace }})"
+            }
+          ]
         },
+
         {
           "id": 5,
-          "title": "p95 Model Inference Latency (s)",
+          "title": "ML Model Inference Latency",
+          "description": "Time spent inside the model's predict() call — excludes HTTP overhead",
           "type": "timeseries",
-          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
-          "targets": [{
-            "datasource": { "type": "prometheus" },
-            "expr": "histogram_quantile(0.95, rate(heart_prediction_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))",
-            "legendFormat": "{{namespace}} p95 inference"
-          }]
+          "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": { "unit": "ms", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.50, sum by (le, namespace) (rate(heart_prediction_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p50 — Median Inference ({{ namespace }})"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.95, sum by (le, namespace) (rate(heart_prediction_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p95 — Slow Inference ({{ namespace }})"
+            }
+          ]
         },
+
         {
           "id": 6,
-          "title": "Prediction Errors (errors/s)",
+          "title": "Prediction Errors per Minute",
+          "description": "Errors thrown during model inference — spikes indicate bad input or model issues",
           "type": "timeseries",
-          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+          "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": { "lineWidth": 2, "fillOpacity": 20 },
+              "color": { "fixedColor": "red", "mode": "fixed" }
+            }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max"] } },
           "targets": [{
             "datasource": { "type": "prometheus" },
-            "expr": "rate(heart_prediction_errors_total{namespace=~\"$namespace\"}[5m])",
-            "legendFormat": "{{namespace}} {{error_type}}"
+            "expr": "sum by (namespace, error_type) (rate(heart_prediction_errors_total{namespace=~\"$namespace\"}[1m])) * 60",
+            "legendFormat": "{{ namespace }} — {{ error_type }} error"
           }]
         },
+
+        {
+          "id": 14,
+          "title": "Disease Detection Rate Over Time",
+          "description": "Trend of what fraction of predictions are disease-positive — useful to spot data drift",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 28, "w": 24, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0, "max": 1,
+              "custom": { "lineWidth": 2, "fillOpacity": 20 },
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.6 },
+                  { "color": "red", "value": 0.75 }
+                ]
+              }
+            }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "last"] } },
+          "targets": [{
+            "datasource": { "type": "prometheus" },
+            "expr": "sum by (namespace) (rate(heart_predictions_total{namespace=~\"$namespace\", prediction=\"1\"}[5m])) / sum by (namespace) (rate(heart_predictions_total{namespace=~\"$namespace\"}[5m]))",
+            "legendFormat": "Disease Rate — {{ namespace }}"
+          }]
+        },
+
+        {
+          "id": 15,
+          "title": "Total API Calls Over Time",
+          "description": "Cumulative count of all /predict requests served — shows overall usage growth",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 36, "w": 24, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": { "lineWidth": 2, "fillOpacity": 15, "drawStyle": "line", "spanNulls": true },
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "options": {
+            "tooltip": { "mode": "multi" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["last", "max"] }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace) (increase(http_requests_total{job=~\".*heart.*\", namespace=~\"$namespace\", handler=\"/predict\"}[$__range]))",
+              "legendFormat": "{{ namespace }} — Total /predict Calls"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace) (http_requests_total{job=~\".*heart.*\", namespace=~\"$namespace\", handler=\"/predict\"})",
+              "legendFormat": "{{ namespace }} — Cumulative Count"
+            }
+          ]
+        },
+
         {
           "id": 7,
           "title": "Pod CPU Usage",
+          "description": "CPU cores consumed by the heart-api container per pod",
           "type": "timeseries",
-          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+          "gridPos": { "x": 0, "y": 44, "w": 12, "h": 8 },, "custom": { "lineWidth": 1, "fillOpacity": 10 } }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
           "targets": [{
             "datasource": { "type": "prometheus" },
             "expr": "rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", container=\"heart-api\"}[1m])",
-            "legendFormat": "{{namespace}} {{pod}}"
+            "legendFormat": "{{ namespace }} — pod: {{ pod }}"
           }]
         },
+
         {
           "id": 8,
-          "title": "Pod Memory Usage (bytes)",
+          "title": "Pod Memory Usage",
+          "description": "Working set memory (RAM) used by the heart-api container per pod",
           "type": "timeseries",
-          "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+          "gridPos": { "x": 12, "y": 44, "w": 12, "h": 8 },, "custom": { "lineWidth": 1, "fillOpacity": 10 } }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
           "targets": [{
             "datasource": { "type": "prometheus" },
-            "expr": "container_memory_working_set_bytes{namespace=~\"$namespace\", container=\"heart-api\"}",
-            "legendFormat": "{{namespace}} {{pod}}"
+            "expr": "container_memory_working_set_bytes{namespace=~\"$namespace\", container=\"heart-api\"} / 1024 / 1024",
+            "legendFormat": "{{ namespace }} — pod: {{ pod }}"
           }]
         }
+
       ]
     }
