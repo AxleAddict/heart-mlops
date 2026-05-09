@@ -348,6 +348,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     log.info("Saved winning model bundle to %s", args.output_model)
 
+    # Register the winning model in the MLflow Model Registry so that
+    # deployment pipelines can tag which version is live in each environment.
+    MODEL_REGISTRY_NAME = "HeartDiseaseClassifier"
+    model_uri = f"runs:/{winner.best_run_id}/model"
+    registered = mlflow.register_model(model_uri, MODEL_REGISTRY_NAME)
+    log.info(
+        "Registered model '%s' version=%s from run_id=%s",
+        MODEL_REGISTRY_NAME, registered.version, winner.best_run_id,
+    )
+
+    # Write version number to a file so Jenkins can read it without
+    # re-querying MLflow or parsing Python stdout.
+    version_file = args.artifacts_dir / "model_version.txt"
+    version_file.write_text(str(registered.version))
+    log.info("Wrote model version %s to %s", registered.version, version_file)
+
     summary = {
         "winner": winner.family,
         "winner_run_id": winner.best_run_id,

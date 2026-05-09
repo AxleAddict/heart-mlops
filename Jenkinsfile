@@ -82,6 +82,34 @@ pipeline {
         '''
       }
     }
+
+    stage('Tag Model as NonProd in MLflow') {
+      steps {
+        sh '''
+          MODEL_VERSION=$(cat artifacts/model_version.txt)
+          MLFLOW_TRACKING_URI=$MLFLOW_URI \
+          $WORKSPACE/.venv/bin/python3 - <<EOF
+import mlflow
+import os
+
+client = mlflow.tracking.MlflowClient()
+version = "$MODEL_VERSION"
+name    = "HeartDiseaseClassifier"
+
+# Set nonprod alias so MLflow UI shows which version is live in nonprod
+client.set_registered_model_alias(name, "nonprod", version)
+
+# Tag the version with deployment metadata
+client.set_model_version_tag(name, version, "deployed_env",   "nonprod")
+client.set_model_version_tag(name, version, "deployed_image", "${IMAGE}:${GIT_COMMIT}")
+client.set_model_version_tag(name, version, "git_commit",     "${GIT_COMMIT}")
+
+print(f"MLflow: set alias 'nonprod' -> {name} v{version}")
+EOF
+        '''
+      }
+    }
+
   }
 
   post {

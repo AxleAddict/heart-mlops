@@ -79,6 +79,52 @@ pipeline {
         """
       }
     }
+
+    stage('Tag Model as Prod in MLflow') {
+      environment {
+        MLFLOW_URI = credentials('mlflow-tracking-uri')
+      }
+      steps {
+        sh """
+          # Install mlflow if not already present in a venv
+          python3 -m venv \$WORKSPACE/.venv-prod
+          \$WORKSPACE/.venv-prod/bin/pip install -q mlflow
+
+          MLFLOW_TRACKING_URI=\$MLFLOW_URI \
+          \$WORKSPACE/.venv-prod/bin/python3 - <<'PYEOF'
+import mlflow, sys
+
+client  = mlflow.tracking.MlflowClient()
+name    = "HeartDiseaseClassifier"
+tag_key = "deployed_image"
+image   = "${IMAGE}:${params.IMAGE_TAG}"
+
+# Find the registry version that was built from this image tag
+versions = client.search_model_versions(f"name='{name}'")
+match = next((v for v in versions if v.tags.get(tag_key) == image), None)
+
+if not match:
+    print(f"WARNING: no registered version found with {tag_key}={image}")
+    print("Available versions:")
+    for v in versions:
+        print(f"  v{v.version}: {v.tags}")
+    sys.exit(0)
+
+version = match.version
+
+# Move the prod alias to this version
+client.set_registered_model_alias(name, "prod", version)
+
+# Update deployment tags
+client.set_model_version_tag(name, version, "deployed_env",  "prod")
+client.set_model_version_tag(name, version, "prod_slot",     "${params.SLOT}")
+client.set_model_version_tag(name, version, "prod_image",    image)
+
+print(f"MLflow: set alias 'prod' -> {name} v{version} (slot=${params.SLOT})")
+PYEOF
+        """
+      }
+    }
   }
 
   post {
