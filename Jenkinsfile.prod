@@ -94,33 +94,45 @@ pipeline {
           \$WORKSPACE/.venv-prod/bin/python3 - <<'PYEOF'
 import mlflow, sys
 
-client  = mlflow.tracking.MlflowClient()
-name    = "HeartDiseaseClassifier"
-tag_key = "deployed_image"
-image   = "${IMAGE}:${params.IMAGE_TAG}"
+client = mlflow.tracking.MlflowClient()
+name   = "HeartDiseaseClassifier"
+slot   = "${params.SLOT}"
+image  = "${IMAGE}:${params.IMAGE_TAG}"
+tag    = "${params.IMAGE_TAG}"   # may be short or full SHA
 
-# Find the registry version that was built from this image tag
-versions = client.search_model_versions(f"name='{name}'")
-match = next((v for v in versions if v.tags.get(tag_key) == image), None)
-
-if not match:
-    print(f"WARNING: no registered version found with {tag_key}={image}")
-    print("Available versions:")
-    for v in versions:
-        print(f"  v{v.version}: {v.tags}")
-    sys.exit(0)
-
-version = match.version
+# Strategy 1: use whatever version currently holds the @nonprod alias
+# (the CI pipeline always sets nonprod before prod is promoted, so this
+# is always the version that was verified in nonprod before promotion).
+try:
+    nonprod_mv = client.get_model_version_by_alias(name, "nonprod")
+    version = nonprod_mv.version
+    print(f"Found version v{version} via @nonprod alias")
+except Exception:
+    # Fallback: match by git_commit tag prefix (handles short SHA)
+    versions = client.search_model_versions(f"name='{name}'")
+    match = next(
+        (v for v in versions
+         if v.tags.get("git_commit", "").startswith(tag) or tag.startswith(v.tags.get("git_commit","")[:7])),
+        None
+    )
+    if not match:
+        print(f"ERROR: no registered version found for IMAGE_TAG={tag}")
+        print("Registered versions:")
+        for v in versions:
+            print(f"  v{v.version}: git_commit={v.tags.get('git_commit','?')}")
+        sys.exit(1)
+    version = match.version
+    print(f"Found version v{version} via git_commit tag match")
 
 # Move the prod alias to this version
 client.set_registered_model_alias(name, "prod", version)
 
-# Update deployment tags
-client.set_model_version_tag(name, version, "deployed_env",  "prod")
-client.set_model_version_tag(name, version, "prod_slot",     "${params.SLOT}")
-client.set_model_version_tag(name, version, "prod_image",    image)
+# Update deployment tags on this version
+client.set_model_version_tag(name, version, "deployed_env", "prod")
+client.set_model_version_tag(name, version, "prod_slot",    slot)
+client.set_model_version_tag(name, version, "prod_image",   image)
 
-print(f"MLflow: set alias 'prod' -> {name} v{version} (slot=${params.SLOT})")
+print(f"MLflow: alias 'prod' -> {name} v{version} (slot={slot})")
 PYEOF
         """
       }
