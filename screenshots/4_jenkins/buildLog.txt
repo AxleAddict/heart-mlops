@@ -1,0 +1,388 @@
+Started by GitHub push by AxleAddict
+Obtained Jenkinsfile from git https://github.com/AxleAddict/heart-mlops.git
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on Jenkins in /root/.jenkins/workspace/heart-mlops
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Declarative: Checkout SCM)
+[Pipeline] checkout
+Selected Git installation does not exist. Using Default
+The recommended git tool is: NONE
+using credential github-token
+ > git rev-parse --resolve-git-dir /root/.jenkins/workspace/heart-mlops/.git # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://github.com/AxleAddict/heart-mlops.git # timeout=10
+Fetching upstream changes from https://github.com/AxleAddict/heart-mlops.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.39.5'
+using GIT_ASKPASS to set credentials 
+ > git fetch --tags --force --progress -- https://github.com/AxleAddict/heart-mlops.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
+Checking out Revision 3fcfd901ce38e07de371ff3a6312b58266913829 (refs/remotes/origin/main)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 3fcfd901ce38e07de371ff3a6312b58266913829 # timeout=10
+Commit message: "dummy commit"
+ > git rev-list --no-walk 20fbb51a0506fcd2541c48102b361a84e1ce0e67 # timeout=10
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] withCredentials
+Masking supported pattern matches of $MLFLOW_URI or $GCP_KEY
+[Pipeline] {
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Checkout)
+[Pipeline] checkout
+Selected Git installation does not exist. Using Default
+The recommended git tool is: NONE
+using credential github-token
+ > git rev-parse --resolve-git-dir /root/.jenkins/workspace/heart-mlops/.git # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://github.com/AxleAddict/heart-mlops.git # timeout=10
+Fetching upstream changes from https://github.com/AxleAddict/heart-mlops.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.39.5'
+using GIT_ASKPASS to set credentials 
+ > git fetch --tags --force --progress -- https://github.com/AxleAddict/heart-mlops.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
+Checking out Revision 3fcfd901ce38e07de371ff3a6312b58266913829 (refs/remotes/origin/main)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 3fcfd901ce38e07de371ff3a6312b58266913829 # timeout=10
+Commit message: "dummy commit"
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Train)
+[Pipeline] sh
++ python3 -m venv /root/.jenkins/workspace/heart-mlops/.venv
++ /root/.jenkins/workspace/heart-mlops/.venv/bin/pip install -q -r requirements.txt
++ MLFLOW_TRACKING_URI=**** MLFLOW_EXPERIMENT_NAME=heart-disease-ci PYTHONPATH=/root/.jenkins/workspace/heart-mlops/src /root/.jenkins/workspace/heart-mlops/.venv/bin/python3 -m heart.train --data data/processed.cleveland.data --val-data data/processed.hungarian.data --artifacts-dir artifacts --output-model models/model.pkl
+2026-05-09 20:34:28,222 [INFO] heart.train: MLflow tracking=**** experiment=heart-disease-ci
+2026-05-09 20:34:28,237 [INFO] heart.train: train=(242, 13) test=(61, 13) val_external=(294, 13)
+2026-05-09 20:34:28,552 [INFO] heart.train: [logreg] starting GridSearchCV over 8 combos
+2026-05-09 20:34:41,474 [INFO] heart.train: 
+--- logreg on test ---
+              precision    recall  f1-score   support
+
+  no_disease      0.933     0.848     0.889        33
+     disease      0.839     0.929     0.881        28
+
+    accuracy                          0.885        61
+   macro avg      0.886     0.889     0.885        61
+weighted avg      0.890     0.885     0.885        61
+
+2026-05-09 20:34:42,144 [INFO] heart.train: 
+--- logreg on val_hungarian ---
+              precision    recall  f1-score   support
+
+  no_disease      0.808     0.963     0.879       188
+     disease      0.900     0.594     0.716       106
+
+    accuracy                          0.830       294
+   macro avg      0.854     0.779     0.797       294
+weighted avg      0.841     0.830     0.820       294
+
+2026/05/09 20:34:42 WARNING mlflow.sklearn: Saving scikit-learn models in the pickle or cloudpickle format requires exercising caution because these formats rely on Python's object serialization mechanism, which can execute arbitrary code during deserialization. The recommended safe alternative is the 'skops' format. For more information, see: https://scikit-learn.org/stable/model_persistence.html
+2026-05-09 20:34:50,502 [INFO] heart.train: [logreg] best params={'clf__C': 0.1, 'clf__penalty': 'l2'} cv_roc_auc=0.9117
+2026-05-09 20:34:50,502 [INFO] heart.train: [logreg] test={'test_accuracy': 0.8852459016393442, 'test_precision': 0.8387096774193549, 'test_recall': 0.9285714285714286, 'test_f1': 0.8813559322033898, 'test_roc_auc': 0.9621212121212122} val={'val_accuracy': 0.8299319727891157, 'val_precision': 0.9, 'val_recall': 0.5943396226415094, 'val_f1': 0.7159090909090909, 'val_roc_auc': 0.8967282215977518} gap={'gap_roc_auc': 0.06539299052346037, 'gap_f1': 0.16544684129429887, 'gap_accuracy': 0.055313928850228566} parent=98bd0b1e30f54eb7849bfd7a833afebb best=823aae19987c42a1b15917919366ec77
+2026-05-09 20:34:50,707 [INFO] heart.train: [randomforest] starting GridSearchCV over 24 combos
+2026-05-09 20:36:13,258 [INFO] heart.train: 
+--- randomforest on test ---
+              precision    recall  f1-score   support
+
+  no_disease      0.933     0.848     0.889        33
+     disease      0.839     0.929     0.881        28
+
+    accuracy                          0.885        61
+   macro avg      0.886     0.889     0.885        61
+weighted avg      0.890     0.885     0.885        61
+
+2026-05-09 20:36:14,291 [INFO] heart.train: 
+--- randomforest on val_hungarian ---
+              precision    recall  f1-score   support
+
+  no_disease      0.777     0.963     0.860       188
+     disease      0.885     0.509     0.647       106
+
+    accuracy                          0.799       294
+   macro avg      0.831     0.736     0.753       294
+weighted avg      0.816     0.799     0.783       294
+
+2026/05/09 20:36:15 WARNING mlflow.sklearn: Saving scikit-learn models in the pickle or cloudpickle format requires exercising caution because these formats rely on Python's object serialization mechanism, which can execute arbitrary code during deserialization. The recommended safe alternative is the 'skops' format. For more information, see: https://scikit-learn.org/stable/model_persistence.html
+2026-05-09 20:36:20,810 [INFO] heart.train: [randomforest] best params={'clf__max_depth': 4, 'clf__min_samples_leaf': 5, 'clf__n_estimators': 200} cv_roc_auc=0.8998
+2026-05-09 20:36:20,811 [INFO] heart.train: [randomforest] test={'test_accuracy': 0.8852459016393442, 'test_precision': 0.8387096774193549, 'test_recall': 0.9285714285714286, 'test_f1': 0.8813559322033898, 'test_roc_auc': 0.9545454545454546} val={'val_accuracy': 0.7993197278911565, 'val_precision': 0.8852459016393442, 'val_recall': 0.5094339622641509, 'val_f1': 0.6467065868263473, 'val_roc_auc': 0.8940184664793255} gap={'gap_roc_auc': 0.060526988066129106, 'gap_f1': 0.23464934537704252, 'gap_accuracy': 0.08592617374818778} parent=30210ca4fafa4ab2b7be32104b66c6c5 best=545fc9caef0f44c59c38e34f68cd8555
+2026-05-09 20:36:20,889 [INFO] heart.train: Winner: logreg (val_roc_auc=0.8967)
+2026-05-09 20:36:20,894 [INFO] heart.train: Saved winning model bundle to models/model.pkl
+Registered model 'HeartDiseaseClassifier' already exists. Creating a new version of this model...
+2026/05/09 20:36:22 WARNING mlflow.tracking._model_registry.fluent: Run with id 823aae19987c42a1b15917919366ec77 has no artifacts at artifact path 'model', registering model based on models:/m-0da98ec28bd64d00a001693237ad767e instead
+2026/05/09 20:36:22 INFO mlflow.store.model_registry.abstract_store: Waiting up to 300 seconds for model version to finish creation. Model name: HeartDiseaseClassifier, version 6
+Created version '6' of model 'HeartDiseaseClassifier'.
+2026-05-09 20:36:22,265 [INFO] heart.train: Registered model 'HeartDiseaseClassifier' version=6 from run_id=823aae19987c42a1b15917919366ec77
+2026-05-09 20:36:22,265 [INFO] heart.train: Wrote model version 6 to artifacts/model_version.txt
+2026-05-09 20:36:22,266 [INFO] heart.train: Wrote summary artifacts/training_summary.json
+🏃 View run logreg_C=0.1_penalty=l2 at: ****/#/experiments/1/runs/be28da176c6d4ee8908c2e93404c5aee
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_C=1.0_penalty=l1 at: ****/#/experiments/1/runs/6082483d63934b688ca2233e94fa09e7
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_C=1.0_penalty=l2 at: ****/#/experiments/1/runs/633f5dd7aea5491283ef982f39d04c75
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_C=10.0_penalty=l1 at: ****/#/experiments/1/runs/9fe268d3e2154ff7b73176157c6d83ee
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_C=10.0_penalty=l2 at: ****/#/experiments/1/runs/99c50643df7c40a8912bfd34800531ee
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_C=0.01_penalty=l2 at: ****/#/experiments/1/runs/5746a7a6ada84ce5866b8c97f936c839
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_C=0.1_penalty=l1 at: ****/#/experiments/1/runs/569c167d1b374edbbb910ba2ba650713
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_C=0.01_penalty=l1 at: ****/#/experiments/1/runs/8d08efb6b8be413d95f949dca35f7e6a
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg_best at: ****/#/experiments/1/runs/823aae19987c42a1b15917919366ec77
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run logreg at: ****/#/experiments/1/runs/98bd0b1e30f54eb7849bfd7a833afebb
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=4_min_samples_leaf=5_n_estimators=200 at: ****/#/experiments/1/runs/4a4ac56f427b457f9407bd173c7583aa
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=4_min_samples_leaf=3_n_estimators=200 at: ****/#/experiments/1/runs/0071efc5c02f487ea2bd4b7640d70e75
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=4_min_samples_leaf=3_n_estimators=400 at: ****/#/experiments/1/runs/3db81f3f71d240888096210e3232845b
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=6_min_samples_leaf=3_n_estimators=400 at: ****/#/experiments/1/runs/3969111857644efc82f362fcefd1bd73
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=8_min_samples_leaf=3_n_estimators=400 at: ****/#/experiments/1/runs/1edf16bbbcb84004a65abd16f1ca3209
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=None_min_samples_leaf=5_n_estimators=400 at: ****/#/experiments/1/runs/4f44639000ac4175b18247984ea2aa15
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=8_min_samples_leaf=5_n_estimators=400 at: ****/#/experiments/1/runs/4f6fa127b54041fd801c506c70e36627
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=4_min_samples_leaf=1_n_estimators=400 at: ****/#/experiments/1/runs/4261b14875a64b589d2166cdf4a19fb4
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=None_min_samples_leaf=3_n_estimators=400 at: ****/#/experiments/1/runs/46ef39b2de964b0f9f941bbb0dfab86e
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=6_min_samples_leaf=1_n_estimators=200 at: ****/#/experiments/1/runs/ca9da4c0238240abb7fc4009127855e9
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=4_min_samples_leaf=5_n_estimators=400 at: ****/#/experiments/1/runs/41c496c567af4c01b1eedc7489091308
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=8_min_samples_leaf=3_n_estimators=200 at: ****/#/experiments/1/runs/c29e025b16064c9ab9cb2177c97827aa
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=6_min_samples_leaf=5_n_estimators=400 at: ****/#/experiments/1/runs/47804ffe75bd4c41b98579cc749e803b
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=4_min_samples_leaf=1_n_estimators=200 at: ****/#/experiments/1/runs/39539ca2ffbe43b59551471d25c94dfd
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=None_min_samples_leaf=3_n_estimators=200 at: ****/#/experiments/1/runs/e9a076c18fa841038f9cbcc4ff80fd50
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=6_min_samples_leaf=1_n_estimators=400 at: ****/#/experiments/1/runs/af7230c1e4d84c1fa0450beab73c1ab5
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=6_min_samples_leaf=3_n_estimators=200 at: ****/#/experiments/1/runs/e23d1231ec7f4a31b807d76fac01f7cd
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=8_min_samples_leaf=1_n_estimators=400 at: ****/#/experiments/1/runs/e0ff3af22c27431ba2180c20bb7ba7de
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=8_min_samples_leaf=5_n_estimators=200 at: ****/#/experiments/1/runs/70cf4118b0114e548c574e38d747f860
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=8_min_samples_leaf=1_n_estimators=200 at: ****/#/experiments/1/runs/5fe43efcf07a4d1b84c1914cf3367d24
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=None_min_samples_leaf=5_n_estimators=200 at: ****/#/experiments/1/runs/0f39f5e4ef224e469345fa705474e9cb
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=6_min_samples_leaf=5_n_estimators=200 at: ****/#/experiments/1/runs/0cb630c10a5d4bc1ae99b8f605a7b40e
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=None_min_samples_leaf=1_n_estimators=400 at: ****/#/experiments/1/runs/29e3101b93d2468684c56477c2759966
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_max_depth=None_min_samples_leaf=1_n_estimators=200 at: ****/#/experiments/1/runs/d88391672f304067b7b953c257ec8830
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest_best at: ****/#/experiments/1/runs/545fc9caef0f44c59c38e34f68cd8555
+🧪 View experiment at: ****/#/experiments/1
+🏃 View run randomforest at: ****/#/experiments/1/runs/30210ca4fafa4ab2b7be32104b66c6c5
+🧪 View experiment at: ****/#/experiments/1
+Post stage
+[Pipeline] archiveArtifacts
+Archiving artifacts
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Unit Tests)
+[Pipeline] sh
++ PYTHONPATH=/root/.jenkins/workspace/heart-mlops/src /root/.jenkins/workspace/heart-mlops/.venv/bin/pytest tests/ -v --tb=short
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.0.3, pluggy-1.6.0
+rootdir: /root/.jenkins/workspace/heart-mlops
+configfile: pytest.ini
+plugins: cov-7.1.0, anyio-4.13.0
+collected 30 items
+
+tests/test_api.py .........                                              [ 30%]
+tests/test_data.py ......                                                [ 50%]
+tests/test_features.py ....                                              [ 63%]
+tests/test_predict.py .......                                            [ 86%]
+tests/test_train.py ....                                                 [100%]
+
+============================= 30 passed in 25.03s ==============================
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Build & Push Docker Image)
+[Pipeline] sh
++ gcloud auth activate-service-account --key-file=****
+Activated service account credentials for: [jenkins-sa@heart-mlops-2026.iam.gserviceaccount.com]
++ gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+WARNING: Your config file at [/root/.docker/config.json] contains these credential helper entries:
+
+{
+  "credHelpers": {
+    "asia-south1-docker.pkg.dev": "gcloud"
+  }
+}
+Adding credentials for: asia-south1-docker.pkg.dev
+gcloud credential helpers already registered correctly.
++ docker build -f docker/Dockerfile -t asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:3fcfd901ce38e07de371ff3a6312b58266913829 -t asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:latest .
+Sending build context to Docker daemon   1.07GB
+Step 1/16 : FROM python:3.11-slim AS builder
+ ---> 5d617d87925d
+Step 2/16 : WORKDIR /app
+ ---> Using cache
+ ---> 4b8c0c3b7a60
+Step 3/16 : COPY requirements.txt .
+ ---> Using cache
+ ---> f50ebd0547ed
+Step 4/16 : RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+ ---> Using cache
+ ---> 53e0c52f8d4f
+Step 5/16 : FROM python:3.11-slim
+ ---> 5d617d87925d
+Step 6/16 : WORKDIR /app
+ ---> Using cache
+ ---> 4b8c0c3b7a60
+Step 7/16 : COPY --from=builder /install /usr/local
+ ---> Using cache
+ ---> da3e6c6ea534
+Step 8/16 : COPY src/ src/
+ ---> Using cache
+ ---> 262e095d9938
+Step 9/16 : COPY models/ models/
+ ---> 584e2463cc49
+Step 10/16 : RUN useradd -m appuser && chown -R appuser /app
+ ---> Running in b9067773ef8f
+Removing intermediate container b9067773ef8f
+ ---> 25249ca4d35d
+Step 11/16 : USER appuser
+ ---> Running in 0f4de9ae7064
+Removing intermediate container 0f4de9ae7064
+ ---> d5de608fdddb
+Step 12/16 : ENV HEART_MODEL_PATH=/app/models/model.pkl
+ ---> Running in a2d51813dc4d
+Removing intermediate container a2d51813dc4d
+ ---> 164f1c6e1f6a
+Step 13/16 : ENV LOG_LEVEL=INFO
+ ---> Running in bde06a6e9787
+Removing intermediate container bde06a6e9787
+ ---> 5add454c6f23
+Step 14/16 : ENV PYTHONPATH=/app/src
+ ---> Running in e76b1adf9d0b
+Removing intermediate container e76b1adf9d0b
+ ---> 36e9dfcedb2f
+Step 15/16 : EXPOSE 8000
+ ---> Running in c62074b99a72
+Removing intermediate container c62074b99a72
+ ---> 09825cf0dc3a
+Step 16/16 : CMD ["uvicorn", "heart.api:app", "--host", "0.0.0.0", "--port", "8000"]
+ ---> Running in ff60e3dfeac3
+Removing intermediate container ff60e3dfeac3
+ ---> 0012b4c72a7b
+Successfully built 0012b4c72a7b
+Successfully tagged asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:3fcfd901ce38e07de371ff3a6312b58266913829
+Successfully tagged asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:latest
++ docker push asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:3fcfd901ce38e07de371ff3a6312b58266913829
+The push refers to repository [asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api]
+05c7950436b7: Preparing
+1eaad1fafe81: Preparing
+b914ebeb6e12: Preparing
+3d33c3f24f94: Preparing
+21a01bed997a: Preparing
+94e760ec3074: Preparing
+799edc77eb3d: Preparing
+2e53cb234c59: Preparing
+79dd1f4c855c: Preparing
+94e760ec3074: Waiting
+799edc77eb3d: Waiting
+2e53cb234c59: Waiting
+79dd1f4c855c: Waiting
+3d33c3f24f94: Layer already exists
+b914ebeb6e12: Layer already exists
+21a01bed997a: Layer already exists
+94e760ec3074: Layer already exists
+799edc77eb3d: Layer already exists
+2e53cb234c59: Layer already exists
+79dd1f4c855c: Layer already exists
+05c7950436b7: Pushed
+1eaad1fafe81: Pushed
+3fcfd901ce38e07de371ff3a6312b58266913829: digest: sha256:9fd146f6554dc7f233ae416a150cdab2264daa69b792d25269cd2ca7f7d5dc4d size: 2204
++ docker push asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:latest
+The push refers to repository [asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api]
+05c7950436b7: Preparing
+1eaad1fafe81: Preparing
+b914ebeb6e12: Preparing
+3d33c3f24f94: Preparing
+21a01bed997a: Preparing
+94e760ec3074: Preparing
+799edc77eb3d: Preparing
+2e53cb234c59: Preparing
+79dd1f4c855c: Preparing
+94e760ec3074: Waiting
+799edc77eb3d: Waiting
+2e53cb234c59: Waiting
+79dd1f4c855c: Waiting
+21a01bed997a: Layer already exists
+1eaad1fafe81: Layer already exists
+3d33c3f24f94: Layer already exists
+05c7950436b7: Layer already exists
+b914ebeb6e12: Layer already exists
+94e760ec3074: Layer already exists
+799edc77eb3d: Layer already exists
+2e53cb234c59: Layer already exists
+79dd1f4c855c: Layer already exists
+latest: digest: sha256:9fd146f6554dc7f233ae416a150cdab2264daa69b792d25269cd2ca7f7d5dc4d size: 2204
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Deploy to Non-Prod)
+[Pipeline] sh
++ gcloud auth activate-service-account --key-file=****
+Activated service account credentials for: [jenkins-sa@heart-mlops-2026.iam.gserviceaccount.com]
++ gcloud container clusters get-credentials heart-cluster --zone asia-south1-a --project heart-mlops-2026
+Fetching cluster endpoint and auth data.
+kubeconfig entry generated for heart-cluster.
++ kubectl set image deployment/heart-api heart-api=asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:3fcfd901ce38e07de371ff3a6312b58266913829 -n nonprod
+deployment.apps/heart-api image updated
++ kubectl rollout status deployment/heart-api -n nonprod --timeout=120s
+Waiting for deployment "heart-api" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "heart-api" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "heart-api" rollout to finish: 1 old replicas are pending termination...
+deployment "heart-api" successfully rolled out
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Tag Model as NonProd in MLflow)
+[Pipeline] sh
++ cat artifacts/model_version.txt
++ MODEL_VERSION=6
++ MLFLOW_TRACKING_URI=**** /root/.jenkins/workspace/heart-mlops/.venv/bin/python3 -
+MLflow: set alias 'nonprod' -> HeartDiseaseClassifier v6
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Declarative: Post Actions)
+[Pipeline] echo
+Pipeline succeeded — image: asia-south1-docker.pkg.dev/heart-mlops-2026/heart-app/heart-api:3fcfd901ce38e07de371ff3a6312b58266913829
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // withEnv
+[Pipeline] }
+[Pipeline] // withCredentials
+[Pipeline] }
+[Pipeline] // withEnv
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+Finished: SUCCESS
