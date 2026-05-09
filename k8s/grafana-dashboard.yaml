@@ -20,14 +20,17 @@ data:
           {
             "name": "namespace",
             "label": "Environment",
-            "type": "query",
-            "datasource": { "type": "prometheus" },
-            "query": "label_values(heart_predictions_total, namespace)",
+            "type": "custom",
+            "query": "nonprod,prod",
             "includeAll": true,
             "allValue": "nonprod|prod",
             "multi": false,
             "current": { "text": "All", "value": "$__all" },
-            "refresh": 2
+            "options": [
+              { "text": "All",     "value": "$__all", "selected": true },
+              { "text": "nonprod", "value": "nonprod", "selected": false },
+              { "text": "prod",    "value": "prod",    "selected": false }
+            ]
           }
         ]
       },
@@ -219,9 +222,33 @@ data:
         {
           "id": 5,
           "title": "ML Model Inference Latency",
-          "description": "Time spent inside the model's predict() call — excludes HTTP overhead",
+          "description": "Time spent inside model.predict() only — excludes HTTP and serialisation overhead. p50=median, p95=slow requests, p99=worst case.",
           "type": "timeseries",
           "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+          "fieldConfig": {
+            "defaults": { "unit": "ms", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+          },
+          "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.50, sum by (le, namespace) (rate(heart_prediction_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p50 — Median Inference ({{ namespace }})"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.95, sum by (le, namespace) (rate(heart_prediction_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p95 — Slow Inference ({{ namespace }})"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "histogram_quantile(0.99, sum by (le, namespace) (rate(heart_prediction_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))) * 1000",
+              "legendFormat": "p99 — Worst Case Inference ({{ namespace }})"
+            }
+          ]
+        },
+
+        {
           "id": 14,
           "title": "Disease Detection Rate Over Time",
           "description": "Trend of what fraction of predictions are disease-positive — useful to spot data drift",
