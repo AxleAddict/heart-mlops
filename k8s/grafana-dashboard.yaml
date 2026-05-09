@@ -127,7 +127,7 @@ data:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
           "targets": [{
             "datasource": { "type": "prometheus" },
-            "expr": "sum(rate(heart_prediction_errors_total{namespace=~\"$namespace\"}[5m]))",
+            "expr": "sum(rate(heart_prediction_errors_total{namespace=~\"$namespace\"}[5m])) + sum(rate(http_requests_total{job=~\".*heart.*\", namespace=~\"$namespace\", status=~\"[45]..\", handler=\"/predict\"}[5m]))",
             "legendFormat": "Errors/s"
           }]
         },
@@ -261,22 +261,29 @@ data:
         {
           "id": 6,
           "title": "Prediction Errors per Minute",
-          "description": "Errors thrown during model inference — spikes indicate bad input or model issues",
+          "description": "Validation errors (bad input) and runtime errors during model inference — spikes indicate bad requests or model failures",
           "type": "timeseries",
           "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "custom": { "lineWidth": 2, "fillOpacity": 20 },
-              "color": { "fixedColor": "red", "mode": "fixed" }
+              "custom": { "lineWidth": 2, "fillOpacity": 20, "drawStyle": "line" },
+              "color": { "mode": "palette-classic" }
             }
           },
           "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max"] } },
-          "targets": [{
-            "datasource": { "type": "prometheus" },
-            "expr": "sum by (namespace, error_type) (rate(heart_prediction_errors_total{namespace=~\"$namespace\"}[1m])) * 60",
-            "legendFormat": "{{ namespace }} — {{ error_type }} error"
-          }]
+          "targets": [
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace, error_type) (rate(heart_prediction_errors_total{namespace=~\"$namespace\"}[1m])) * 60",
+              "legendFormat": "{{ namespace }} — {{ error_type }} (model error)"
+            },
+            {
+              "datasource": { "type": "prometheus" },
+              "expr": "sum by (namespace, status) (rate(http_requests_total{job=~\".*heart.*\", namespace=~\"$namespace\", status=~\"4..|5..\", handler=\"/predict\"}[1m])) * 60",
+              "legendFormat": "{{ namespace }} — HTTP {{ status }} error"
+            }
+          ]
         },
 
         {
